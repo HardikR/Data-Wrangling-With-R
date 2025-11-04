@@ -1,1 +1,151 @@
+---
+title: "Data Wrangling (Data Preprocessing)"
+author: "Hardik Ramparia"
+date: "19/08/2024"
+output:
+  html_notebook: default
+  pdf_document: default
+  word_document: default
+  html_document:
+    df_print: paged
+subtitle: Practical assessment 1
+---
+
+
+## **Setup**
+
+```{r}
+# Load the necessary packages required to reproduce the report.
+library(kableExtra)
+library(magrittr)
+```
+
+
+## **Student names, numbers and percentage of contributions**
+```{r, echo=FALSE}
+na<- c(" Hardik Ramparia"," Shagun Dixit")
+no<- c(" S4105620","  S4087905")
+pc<- c("51","49")
+
+s<- data.frame(cbind(na,no,pc))
+colnames(s)<- c("Student name", "Student number", "Percentage of contribution")
+
+s %>% kbl(caption = "Group information") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+```
+
+## **Data Description**
+
+Provide explanations here. You may use bulleted lists like this:
+
+* The data used for this report is of the recorded rainfall in different regions in Australia.
+* The features of the data are Station number, Station name, Region, Rainfall, Latitude, Longitude, Elevation.
+* The station number denotes a unique value given to each station for identification purposes.
+* The Station name records the names of the stations across Australia.
+* The Region column denotes the states across Australia that the rainfall is recorded in.
+* The Rainfall column records the values in mm for the total rainfall recorded in a weekly time frame.
+* The station number denotes a unique value given to each station for identification purposes.
+* The Latitude and Longitude columns denote the location of the station in Australia.
+* The Elevation column records the elevation of the station above sea level in meter.
+
+## **Read/Import Data**
+
+```{r}
+# loading the readr package
+library(readr)
+# creating a tibble by reading the data frame
+data = read_csv("rainfall.2024-08-13.weekly.aus.csv")
+# converting the tibble to a data frame
+data <- as.data.frame(data)
+# showing the first few rows of data 
+head(data)
+```
+Explanations: 
+
+* We use the library() function to load the required package.
+* After reading the package, we use the readr function to load the .csv file.
+* Since the .csv file is stored locally in the same directory as the .rmd file, we can directly load the file by specifying its name.
+* When the data is read using read_csv(), it gets read as a tibble. Hence to convert it to a data frame, we use as.data.frame().
+* We use the head() function to view the first few rows of the data frame.
+
+
+## **Inspect and Understand**
+
+
+```{r}
+# printing the structure of the data
+str(data)
+# printing the column names of the data
+names(data)
+# renaming the column names 
+names(data)[names(data) == "Latitude (°)"] <- "Latitude"
+names(data)[names(data) == "Longitude (°)"] <- "Longitude"
+# checking the data types of the features
+sapply(data, class)
+```
+
+Explanations: 
+
+* To view the structure of the data frame, we use the str() function.
+* To view the column names of the data frame, we use the names() function.
+* Renaming the columns can be done by subsetting the required name from the names() function and then renaming it to the new name.
+* We can check the data types of the variables of the data frame by using the sapply() function. Since all the data types are correct, we do not need to change them.
+* Since we do not have any factor variables, there is no need to check for levels.
+
+## **Subsetting** 
+
+```{r}
+# creating a subset of the data
+data_subset <- data[1:10, ]
+data_subset
+# creating a matrix of the subset 
+data_subset_matrix <- as.matrix(data_subset)
+data_subset_matrix
+# printing the structure of the data
+str(data_subset_matrix)
+```
+
+Explanations: 
+
+* Subsetting the data can be done by using the [] characters after the data frame. We use the ':' character to mention the rows and columns needed. 
+* To convert the data frame into a matrix, we use the as.matrix() function.
+* When converting a data frame to a matrix, all variable types will be coerced to the same data type (typically characters if the data frame contains both numeric and character data).
+* Hence when we check the structure of the matrix, we see that it is of a character type.
+
+## **Create a new Data Frame**
+
+```{r}
+# declaring the integer and ordinal variables
+integer_variable <- c(10, 20, 30, 40, 50, 60, 70, 80, 90, 100)
+ordinal_variable <- c("Low", "Medium", "High", "High", "High", "Medium", "Low", 
+                      "Medium", "Low", "Low")
+# assigning the variable as a factor and ordering the values
+ordinal_variable <- factor(ordinal_variable, levels=c("Low", "Medium", "High"), ordered=TRUE)
+# creating the data frame with the variables
+data <- data.frame(Integer_Values = integer_variable, Ordinal_Values = ordinal_variable)
+data
+# checking the structure of the data
+str(data)
+# checking the levels of the data
+levels(data$Ordinal_Values)
+# creating a new variable 
+new_vector <- c(11, 21, 31, 41, 51, 61, 71, 81, 91, 101)
+# adding the new feature to the data frame
+new_data <- cbind(data, New_Values=new_vector)
+new_data
+```
+
+Explanations: 
+
+* We can create a vector using c(). We create two such vectors, one for the integer variable and one for the ordinal variable.
+* When a string variable is created, it is of a categorical type. We can convert the variable into a factor by using the factor() function.
+* When converting the variable into a factor, we mention the levels and if they are in order as a part of the parameters of the function. This helps in ordering the variable.
+* Once our variables are ready, we use the data.frame() function to convert the variables into a data frame. 
+* To check the structure of the data frame, we use the str() function.
+* To check the levels of the ordinal variable, we use the levels() function and pass the variable of the data frame. 
+* Using the cbind() function, we can bind the previous data frame and the new numeric vector into a new data frame. We can mention the name of the column and give it the variable of the new numeric vector.
+
+
+<br>
+<br>
 
