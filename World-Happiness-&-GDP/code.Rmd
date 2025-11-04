@@ -1,1 +1,385 @@
+---
+title: "Data Wrangling"
+author: "Hardik Bhavesh Ramparia"
+subtitle:
+date: ""
+output:
+  html_notebook: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+
+## **Setup**
+
+```{r}
+# Load the necessary packages
+
+library(kableExtra)
+library(magrittr)
+library(tidyr)
+library(dplyr)
+library(readr)
+library(MVN)
+library(forecast)
+library(caret)
+
+```
+
+
+## **Student names, numbers and percentage of contributions**
+```{r, echo=FALSE}
+na<- c("Hardik Bhavesh Ramparia")
+no<- c("S4105620")
+pc<- c("100")
+
+s<- data.frame(cbind(na,no,pc))
+colnames(s)<- c("Student name", "Student number", "Percentage of contribution")
+
+s %>% kbl(caption = "Group information") %>%
+  kable_classic(full_width = F, html_font = "Cambria")
+
+```
+<br>
+<br>
+
+## **Executive Summary**
+
+The report contains 2 data sets, one of the data sets is a merged data set from the World Happiness Report of around 158 countries for 3 years, 2015, 2016 and 2017. The second data set is the GDP of 271 countries for the year 1960 to 2023.
+
+The idea of using the two data sets is to compare the Happiness Score per GDP.
+
+* The first step is to combine the 3 data sets of the year 2015-2017. The data were merged by appending the data one below the other.
+* The GDP data was also loaded locally and two columns that are not useful for data analysis were dropped.
+* In the understand section, the Happiness rank variable was converted to a factor and mistyped column in the GDP data was removed, because it contained only NA values.
+* In the Tidy and Manipulate Data I section, the GDP data was pivoted longer because it contained the year variable as columns. It was then joined with the Happiness data.
+* In Tidy and Manipulate Data II, a new variable Happiness/GDP was mutated in the data frame to easily understand which country has the highest happiness score per GDP. The country Comoros	came out to have the highest Happiness/GDP of 4.095113e-09.
+* In the Scan I section, the variables were analysed for missing values and the row values of year not 2015-2017 were dropped as they did not have any happiness data values.
+* In the Transform section, different transformation techniques such as BoxCox, log and square were used to convert the data into a normal distribution.
+
+<br>
+<br>
+
+## **Data**
+World Happiness Report - The scores are from nationally representative samples for the years 2013-2016 and use the Gallup weights to make the estimates representative. The columns following the happiness score estimate the extent to which each of six factors – economic production, social support, life expectancy, freedom, absence of corruption, and generosity – contribute to making life evaluations higher in each country than they are in Dystopia, a hypothetical country that has values equal to the world’s lowest national averages for each of the six factors.
+
+Variable Description:
+
+* Country - Name of the country.
+* Happiness Rank - Rank of the country based on the Happiness Score.
+* Happiness Score - A metric measured in 2015 by asking the sampled people the question: "How would you rate your happiness".
+* Economy (GDP per Capita) - The extent to which GDP contributes to the calculation of the Happiness Score.
+* Family - The extent to which Family contributes to the calculation of the Happiness Score.
+* Health (Life Expectancy) - The extent to which Life expectancy contributed to the calculation of the Happiness Score.
+* Freedom - The extent to which Freedom contributed to the calculation of the Happiness Score.
+* Trust (Government Corruption) - The extent to which Perception of Corruption contributes to Happiness Score.
+
+World Happiness Data URL - https://www.kaggle.com/datasets/unsdsn/world-happiness
+
+
+World GDP Data - The value of GDP in US Dollars for around 271 countries, for the year 1960 to 2023.
+
+Variable Description:
+
+* Country - Name of the country.
+* Country Code - Abbreviation of the country.
+* 1960 - 2023 - Columns of year that has GDP values of the corresponding country.
+
+World GDP Data URL - https://data.worldbank.org/indicator/NY.GDP.MKTP.CD
+
+```{r}
+# loading the happiness data files
+# loading the 2015 happiness data
+hap2015 <- read_csv('C:/Users/rampa/Hardik/RMIT/SEM 1/Data Wrangling/Assignment 2/2015 Happiness Data.csv') %>%
+  select(`Country`, `Happiness Rank`, `Happiness Score`, `Economy (GDP per Capita)`, `Family`, `Health (Life Expectancy)`, `Freedom`, `Trust (Government Corruption)`, `Generosity`)
+
+# loading the 2016 happiness data
+hap2016 <- read_csv('C:/Users/rampa/Hardik/RMIT/SEM 1/Data Wrangling/Assignment 2/2016 Happiness Data.csv') %>%
+  select(`Country`, `Happiness Rank`, `Happiness Score`, `Economy (GDP per Capita)`, `Family`, `Health (Life Expectancy)`, `Freedom`, `Trust (Government Corruption)`, `Generosity`)
+
+# loading the 2017 happiness data
+hap2017 <- read_csv('C:/Users/rampa/Hardik/RMIT/SEM 1/Data Wrangling/Assignment 2/2017 Happiness Data.csv') %>%
+  select(`Country`, `Happiness.Rank`, `Happiness.Score`, `Economy..GDP.per.Capita.`, `Family`, `Health..Life.Expectancy.`, `Freedom`, `Trust..Government.Corruption.`, `Generosity`)
+
+# renaming the 2017 data frame columns
+hap2017 <- hap2017 %>%
+  rename('Happiness Rank' = 'Happiness.Rank' ,
+         'Happiness Score' = 'Happiness.Score',
+         'Economy (GDP per Capita)' = 'Economy..GDP.per.Capita.',
+         'Health (Life Expectancy)' = 'Health..Life.Expectancy.',
+         'Trust (Government Corruption)' = 'Trust..Government.Corruption.')
+
+# adding the year column to all the data sets
+hap2015 <- hap2015 %>% mutate(Year = 2015)
+hap2016 <- hap2016 %>% mutate(Year = 2016)
+hap2017 <- hap2017 %>% mutate(Year = 2017)
+
+# merging the data frames by binding the rows
+happiness_data <- bind_rows(hap2015, hap2016, hap2017)
+glimpse(happiness_data)
+
+# loading the GDP data
+gdp_data <- read_csv('C:/Users/rampa/Hardik/RMIT/SEM 1/Data Wrangling/Assignment 2/World GDP Data.csv', skip=4)
+
+# the Indicator name and Indicator code columns are of no use, we can drop them
+gdp_data <- gdp_data %>% 
+  select(-`Indicator Name`, -`Indicator Code`)
+
+head(gdp_data)
+
+```
+<br>
+<br>
+
+## **Understand** 
+```{r}
+# understanding the structure of happiness data
+str(happiness_data)
+
+# converting the Happiness Rank variable to a factor variable
+happiness_data <- happiness_data %>% mutate('Happiness Rank' = factor('Happiness Rank', levels=1:158, ordered=TRUE))
+
+# checking the gdp_data data frame
+str(gdp_data)
+
+# here we can see that there is a column '...69' that holds no value, we cna remove it from the data 
+gdp_data <- gdp_data %>% select(-`...69`)
+```
+In this section, we understand the structures of our data sets. In the Happiness data, we can see that the Country variable is of character type. We have converted the Happiness Rank variable into an ordered factor so that it shows an order of rank.
+
+In the GDP Data, the variables were of the correct data type. On detailed inspection, we could see a column "...69" that contained only NA values. This column was dropped as it was of no use to further data analysis.
+<br>
+<br>
+
+##	**Tidy & Manipulate Data I **
+
+
+```{r}
+
+# since this GDP data is untidy, we need to pivot longer
+gdp_long <- gdp_data %>% pivot_longer(names_to="Year", values_to="GDP", cols=3:66)
+gdp_long <- gdp_long %>% rename('Country' = 'Country Name')
+
+# converting the Year column in gdp_long to numeric data type
+gdp_long$Year <- as.numeric(gdp_long$Year)
+
+# joining the happiness and GDP data set
+data <- left_join(gdp_long, happiness_data, by=c('Country', 'Year'))
+
+glimpse(data)
+
+```
+
+According to tidy data rules outlined by Hadley Wickham (Hadley Wickham and Grolemund (2016)), 
+
+* Each variable must have its own column.
+* Each observation must have its own row.
+* Each value must have its own cell.
+
+In our GDP data, the columns have the values of the Year variable, from 1960 to 2023. This violates
+tidy data principles. An illustration is given below:
+```{r pressure, echo=FALSE, fig.cap="A caption", out.width = '100%'}
+knitr::include_graphics("C:/Users/rampa/Downloads/Variable 2.png")
+```
+We need to pivot longer the year variable and keep the GDP as the values. 
+This can be done by using the pivot_longer() function:
+
+pivot_longer(data, names_to, values_to, cols)
+
+The names_to argument specifies the name of the new column that will be created from the column names of the original data. The values_to argument specifies the name of the new column that will be created from the cell values of the original data. The cols argument refers to the columns that should be pivoted into a longer format.
+<br>
+<br>
+
+## **Tidy & Manipulate Data II** 
+
+```{r}
+
+# to compare the happiness with the GDP, we can have a happiness/GDP variable for the data frame
+data <- data %>% 
+  mutate(`Happiness/GDP` = `Happiness Score` / `GDP`)
+
+# look at the highest happiness/gdp country
+data %>% filter(`Happiness/GDP` == max(`Happiness/GDP`, na.rm = TRUE)) %>% select(`Country`, `Happiness/GDP`)
+```
+
+We have merged the happiness score data and the GDP data. To actaully compare the rate of Happiness Score per GDP, we can create another column that divides the happiness score of the particular country with the GDP of the country in that year. 
+
+We use the mutate() function for this manipulation:
+
+mutate(data, new_col = existing1 - existing2)
+
+We can see that the country Comoros has the highest Happiness Score per GDP of 4.095113e-09. This variable can be an easy way to understand different countries that have high happiness levels, regardless of their GDP value.
+
+<br>
+<br>
+
+##	**Scan I **
+
+```{r warning=FALSE}
+# checking the null values in the data
+colSums(is.na(data))
+
+# we can see that there are similar counts of missing values for the data
+# this can be due to the fact that we have used 2015-2017 data for happiness score
+# hence for all other years, the data has null values
+# we can remove the other rows with the year not equal to 2015-2017
+data_filtered <- data %>% filter(Year == c(2015, 2016, 2017))
+new_data <- data_filtered %>% filter(!is.na(data_filtered$`Happiness Score`))
+colSums(is.na(new_data))
+
+```
+
+In our data, we have the GDP value from the year 1960 to 2023. Since we had merged the data with the Happiness Data that had the data of the years 2015-2017, during left_join, the Happiness Scores for the other years was marked as NA (null value). 
+
+For effective data analysis, we can choose to remove the other years as we would not need them since we do not have the Happiness Score for the countries.
+
+We can do this by using the filter function:
+
+filter(data, col=condition)
+
+<br>
+<br>
+
+##	**Scan II**
+
+```{r}
+# search for outliers in the data
+# we have multiple numeric columns like GDP, Happiness Score, Family, Health, etc. 
+# To find the univariate outliers, we can use boxplots
+
+par(mfrow = c(1, 3))  # Set the number of rows and columns for the plotting window
+
+boxplot(new_data$`Happiness Score`, main = "Happiness Score", width=0.6, ylab="Happiness Score")
+boxplot(new_data$`Economy (GDP per Capita)`, main = "Economy (GDP per Capita)", width=0.6, ylab="Economy (GDP per Capita)")
+boxplot(new_data$Family, main = "Family", width=0.6, ylab="Family")
+
+par(mfrow = c(1, 4))
+# boxplot of health (life expectancy)
+new_data$`Health (Life Expectancy)` %>% boxplot(main='Health', ylab='Health (Life Expectancy)')
+
+# boxplot of freedom
+new_data$Freedom %>% boxplot(main='Freedom', ylab='Freedom')
+
+# boxplot of Trust (Government Corruption)
+new_data$`Trust (Government Corruption)` %>% boxplot(main='Trust', ylab='Trust (Government Corruption)')
+# we can see many outliers in this variable
+
+# boxplot of Generosity
+new_data$Generosity %>% boxplot(main='Generosity', ylab='Generosity')
+# we can see two groups of outliers in this variable
+
+par(mfrow = c(1, 3))
+# we have outliers for the Family, Trust and Generosity variables
+# checking their histogram plot to see if they are normally distributed
+hist(new_data$Family, main = "Histogram of Family", xlab="Family")
+
+# histogram of Trust
+hist(new_data$`Trust (Government Corruption)`, main = "Histogram of Trust", xlab="Trust")
+
+# histogram  of Generosity
+hist(new_data$Generosity, main = "Histogram of Generosity", xlab="Generosity")
+
+# since none of the variables are normally distributed, we cannot use the z-score test to check for outliers
+
+# checking bivariate outliers
+par(mfrow = c(1, 1))
+# happiness score vs family
+plot(new_data$`Happiness Score`, new_data$Family, xlab="Happiness Score", 
+     ylab="Family", main="Happiness Score by Family")
+# here we can see a few points to the bottom left of the graph that may be outliers
+# using the Mahalanobis distance with QQ plots
+par(mfrow = c(1, 3))
+subset <- new_data %>% select(`Happiness Score`, `Family`)
+results <- mvn(data=subset, multivariateOutlierMethod = "quan", showOutliers = TRUE)
+results$multivariateOutliers
+# we can see that there are 14 outliers in the data 
+
+# similarly for Happiness Score and Health
+subset <- new_data %>% select(`Happiness Score`, `Health (Life Expectancy)`)
+results <- mvn(data=subset, multivariateOutlierMethod = "quan", showOutliers = TRUE)
+results$multivariateOutliers
+
+# similarly for Happienss Score and Freedom
+subset <- new_data %>% select(`Happiness Score`, `Freedom`)
+results <- mvn(data=subset, multivariateOutlierMethod = "quan", showOutliers = TRUE)
+results$multivariateOutliers
+
+
+
+```
+
+In this section, the histogram plot was used to identify univariate outliers for multiple variables. One of the simplest methods for detecting univariate outliers is the use of boxplots. A boxplot is a graphical display for describing the distribution of the data using the median, the first (Q1) and third quartiles (Q3), and the inter-quartile range (IQR=Q3−Q1).
+
+In the boxplot, the “Tukey’s method of outlier detection” is used to detect outliers. According to this method, outliers are defined as the values in the data set that fall beyond the range of −1.5×IQR to 1.5×IQR. These −1.5×IQR and 1.5×IQR limits are called “outlier fences” and any values lying outside the outlier fences are depicted using an “o” or a similar symbol on the boxplot.
+ 
+The variables that had outliers were Family, Trust and Generosity. Since these variables were not normally distributed, we cannot use the z-score approach for identifying outliers.
+
+Multivariate Outliers for the pair Happiness Score and Family, Happiness Score and Health, Happiness Score and Freedom were identified using the Mahalanobis Distance method. 
+
+The Mahalanobis distance is the most commonly used distance metric to detect outliers for the multivariate setting. The Mahalanobis distance is simply an extension of the univariate z-score, which also accounts for the correlation structure between all the variables. Mahalanobis distance follows a Chi-square distribution with n (number of variables) degrees of freedom, therefore any Mahalanobis distance greater than the critical chi-square value is treated as outliers. The MVN package was used to create the Chi-Square Q-Q plot and outliers were marked in red.
+
+results$multivariateOutliers is very useful in terms of providing the locations of outliers in the data set. This can be used to further remove the outliers from the data set.
+
+<br>
+<br>
+
+##	**Transform **
+
+```{r}
+par(mfrow = c(1, 3))
+# checking the distribution of the Happiness Score data
+hist(new_data$`Happiness Score`, main="Happiness Score", xlab="Happiness Score")
+
+# we can see that the data is slightly left skewed
+# to convert this to a normal distribution, we can apply the square transformation
+happiness_square <- new_data$`Happiness Score` ^ 2
+hist(happiness_square, main="Square of Happiness Score", xlab="Square of Happiness Score")
+
+happiness_cube <- new_data$`Happiness Score` ^ 3
+hist(happiness_cube, main="Cube of Happiness Score", xlab="Cube of Happiness Score")
+# if we apply a higher power, the data may become right skewed, so it is best to leave it at cube
+
+# applying boxcox transformation for Trust
+trust_box_cox <- BoxCox(new_data$`Trust (Government Corruption)`, lambda="auto")
+hist(trust_box_cox, main = "BoxCox Trust", xlab="Trust")
+# the data became a little right skewed
+
+# we can try applying log transformation
+trust_log <- log10(new_data$`Trust (Government Corruption)`)
+hist(trust_log, main="Log10 of Trust", xlab="Log10 of Trust")
+
+# taking the reciprocal
+trust_reci <- 1 / new_data$`Trust (Government Corruption)`
+hist(trust_reci, main="Reciprocal of Trust", xlab="Reciprocal of Trust")
+# this did not do anything
+# we can conclude that log transformation worked best for the Trust variable
+
+# performing PCA on the data
+filtered_data <- new_data %>% select(-c('Country', 'Country Code', 'Year', 'Happiness Rank'))
+pca1 <- preProcess(filtered_data, method="pca", thresh=0.90)
+pca1
+
+# inspecting the extracted components
+pca1$rotation
+```
+In the Transformation section of the report, the variables Happiness Score and Trust were taken for transformations. The Happiness Score variable shows a left skewness. For left skewed data, we can use power transformations to increase the impact of smaller data values. We use the square and cube transformations but even while doing so, the data did not get into a proper normal distribution.
+
+For the Trust variable, the data is right skewed. We use the low level transformations like BoxCox, reciprocal and log10 to compress the higher values. The Trust variable showed somewhat normal distribution with the log10 transformation. 
+
+As an extra exercise, I also applied Principal Component Analysis on a subset of the data. This method is an unsupervised algorithm that creates linear combinations of the original features. The new extracted features are orthogonal, which means that they are uncorrelated. The extracted components are ranked in order of their “explained variance”. For example, the first principal component (PC1) explains the most variance in the data, PC2 explains the second-most variance, and so on. Then you can decide to keep only as many principal components as needed to reach a cumulative explained variance of 90%. Note that the advantage of this technique is fast and simple to implement and works well in practice. However, the new principal components are not interpretable, because they are linear combinations of original features. 
+
+PCA is used to analyse each variable’s (i.e. component’s) relation to the variance. It gives the variance for each component, and then allows the user to decide as to which components should be included in the analysis to prevent overfitting the model. The first component outputted has the highest variance, the second is lower and so on.
+
+In our report, we use the caret package to implement PCA. The preProcess function of the caret package allows us to pass the data and the required threshold that is the cumulative explained variance that we need to achieve. From the summary, we see that PCA extracted 6 components. These components are uncorrelated (orthogonal to each other) and they have no specific interpretation. However, the advantage is extracting and using 6 new components instead of 9 would definitely help us with the “curse of dimensionality” problem.
+
+<br>
+<br>
+
+##	**Presentation **
+
+Presentation of the report:
+
+[Presentation](https://rmit-arc.instructuremedia.com/embed/caa7a732-a506-4ef1-a266-46942b0380d3)
+
 
